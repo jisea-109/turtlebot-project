@@ -8,7 +8,7 @@ from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
 import yaml
-path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world2/input_points.yaml'
+path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world1/input_points.yaml'
 with open(path,"r") as stream:
     points = yaml.safe_load(stream)
 #-------------------------------------------------------------------------------moving bot
@@ -71,11 +71,8 @@ class colourIdentifier():
     def __init__(self):
 
         # Initialise any flags that signal a colour has been detected (default to false)
-        self.flag = False
-
-        # Initialise the value you wish to use for sensitivity in the colour detection (10 should be enough)
-        self.sensitivity = 10
-
+        self.green_flag = False
+        self.red_flag = False
         # Remember to initialise a CvBridge() and set up a subscriber to the image topic you wish to use
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.callback)
@@ -90,21 +87,25 @@ class colourIdentifier():
         except CvBridgeError:
             pass
         # Set the upper and lower bounds of green color
-        hsv_green_lower = np.array([40-self.sensitivity, 40, 40])
-        hsv_green_upper = np.array([70+self.sensitivity, 255, 255])
+        hsv_green_lower = np.array([30, 40, 40])
+        hsv_green_upper = np.array([80, 255, 255])
         # Convert the rgb image into a hsv image
         Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         # Filter out everything but a particular colour using the cv2.inRange() method
-        mask = cv2.inRange(Hsv_image, hsv_green_lower, hsv_green_upper)
+        mask_for_green = cv2.inRange(Hsv_image, hsv_green_lower, hsv_green_upper)
         # Apply the mask to the original image using the cv2.bitwise_and() method
-        bitwiseAnd = cv2.bitwise_and(cv_image,cv_image,mask = mask)
+        green_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_green)
 
-        contours, hierarchy = cv2.findContours(mask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) > 0:
-            c = max(contours, key=cv2.contourArea)
-            M = cv2.moments(c)
-            cx, cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
-            if cv2.contourArea(c) > 5000:
+        contours_green, hierarchy_green = cv2.findContours(mask_for_green,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours_green) > 0:
+            c = max(contours_green, key=cv2.contourArea)
+            # M = cv2.moments(c)
+            # try:
+            #     cx, cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
+            # except ZeroDivisionError:
+            #     pass
+
+            if cv2.contourArea(c) > 2000: # range
                 (x, y), radius = cv2.minEnclosingCircle(c)
                 center = (int(x),int(y))
                 radius = int(radius)
@@ -112,12 +113,29 @@ class colourIdentifier():
                 cv2.circle(Hsv_image,center,radius,hsv_green_upper,1)
 
                 # Then alter the values of any flags
-                self.flag = True
+                self.green_flag = True
         else:
-            self.flag = False
-        cv2.imshow('Camera', bitwiseAnd)
-        cv2.waitKey(3)
+            self.green_flag = False
 
+        hsv_red_lower = np.array([0,100,20])
+        hsv_red_upper = np.array([0,255,255])
+        mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper)
+        red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
+        contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours_red) > 0:
+            c = max(contours_red, key=cv2.contourArea)
+            if cv2.contourArea(c) > 2000:
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                center = (int(x),int(y))
+                radius = int(radius)
+                cv2.circle(Hsv_image,center,radius,hsv_red_upper,1)
+                self.red_flag = True
+        else:
+            self.red_flag = False
+
+        cv2.imshow('green', green_identifier)
+        cv2.imshow('red', red_identifier)
+        cv2.waitKey(3)
 if __name__ == '__main__':
     try:
         rospy.init_node('nav_test', anonymous=True) #navigation
@@ -134,14 +152,20 @@ if __name__ == '__main__':
         navigator.goto(position, quaternion)
 
         rospy.sleep(1)
-        if cI.flag == False: # look around to find the green circle
-            for i in range(1,6):
-                theta = 1 * i
-                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
-                navigator.goto(position, quaternion)
-                if cI.flag == True:
-                    break
-        if cI.flag == True: # if the turtlebot find the green circle at the entrance of room 2
+        if cI.green_flag == False: # look around to find the green circle
+            if cI.red_flag == True:
+                pass
+            else:
+                for i in range(1,10):
+                    theta = 0.5 * i
+                    quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                    navigator.goto(position, quaternion)
+                    if cI.green_flag == True:
+                        break
+                    if cI.red_flag == True:
+                        break
+
+        if cI.green_flag == True: # if the turtlebot find the green circle at the entrance of room 2
             x = points['room2_centre_xy'][0]# SPECIFY X COORDINATE HERE
             y = points['room2_centre_xy'][1]# SPECIFY Y COORDINATE HERE
             theta = 0# SPECIFY THETA (ROTATION) HERE
@@ -151,6 +175,15 @@ if __name__ == '__main__':
             rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
             navigator.goto(position, quaternion)
 
+        elif cI.red_flag ==True: # if the turtlebot find the green circle instead, go to room 1
+            x = points['room1_centre_xy'][0]# SPECIFY X COORDINATE HERE
+            y = points['room1_centre_xy'][1]# SPECIFY Y COORDINATE HERE
+            theta = 0# SPECIFY THETA (ROTATION) HERE
+            position = {'x': x, 'y' : y}
+            quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+
+            rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
+            navigator.goto(position, quaternion)
         else: # go to room 1 if the turtlebot does not find the green circle nearby
             x = points['room1_entrance_xy'][0]
             y = points['room1_entrance_xy'][1]
@@ -161,16 +194,32 @@ if __name__ == '__main__':
             rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
             navigator.goto(position, quaternion)
 
-            if cI.flag == False: # look around at the in front of room 1
-                for i in range(1,6):
-                    theta = 1 * i
-                    quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
-                    navigator.goto(position, quaternion)
-                    if cI.flag == True:
-                        break
-            if cI.flag == True: # if the turtlebot find the green circle, then enther the room
+            if cI.green_flag == False: # look around at the in front of room 1
+                if cI.red_flag == True:
+                    pass
+                else:
+                    for i in range(1,10):
+                        theta = 0.5 * i
+                        quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                        navigator.goto(position, quaternion)
+                        if cI.green_flag == True:
+                            break
+                        if cI.red_flag == True:
+                            break
+
+            if cI.green_flag == True: # if the turtlebot find the green circle, then enther the room
                 x = points['room1_centre_xy'][0]
                 y = points['room1_centre_xy'][1]
+                theta = 0
+                position = {'x': x, 'y' : y}
+                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+
+                rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
+                navigator.goto(position, quaternion)
+
+            elif cI.red_flag == True:# if the turtlebot find the green circle instead, go to room 2
+                x = points['room2_centre_xy'][0]
+                y = points['room2_centre_xy'][1]
                 theta = 0
                 position = {'x': x, 'y' : y}
                 quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
