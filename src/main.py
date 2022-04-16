@@ -132,18 +132,96 @@ class colourIdentifier():
                 self.red_flag = True
         else:
             self.red_flag = False
-
-        cv2.imshow('green', green_identifier)
-        cv2.imshow('red', red_identifier)
+        # cv2.imshow('green', green_identifier)
+        # cv2.imshow('red', red_identifier)
         cv2.waitKey(3)
+
+class cluedoIdentifier():
+
+    def __init__(self):
+
+        # Initialise any flags that signal a colour has been detected (default to false)
+        self.red_flag = False
+        self.scarlet_flag = True
+        # Remember to initialise a CvBridge() and set up a subscriber to the image topic you wish to use
+        self.bridge = CvBridge()
+        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.callback)
+        # We covered which topic to subscribe to should you wish to receive image data
+
+
+    def callback(self, data):
+        # Convert the received image into a opencv image
+        # But remember that you should always wrap a call to this conversion method in an exception handler
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError:
+            pass
+        hsv_red_lower = np.array([0,100,20])
+        hsv_red_upper = np.array([10,255,255])
+        hsv_skin_lower = np.array([0,50,60])
+        hsv_skin_upper = np.array([10,150,255])
+        Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+        mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper)
+        mask_for_skin = cv2.inRange(Hsv_image, hsv_skin_lower, hsv_skin_upper)
+        # Apply the mask to the original image using the cv2.bitwise_and() method
+        red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
+
+        contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours_red) > 0:
+            c = max(contours_red, key=cv2.contourArea)
+
+            if cv2.contourArea(c) > 50: # range
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                center = (int(x),int(y))
+                radius = int(radius)
+                #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                cv2.circle(Hsv_image,center,radius,hsv_red_upper,1)
+
+                self.red_flag = True
+                if self.red_flag == True:
+                    skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
+                    contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+                    if len(contours_skin) > 0:
+                        c = max(contours_skin, key=cv2.contourArea)
+
+                        if cv2.contourArea(c) > 20: # range
+                            (x2, y2), radius_skin = cv2.minEnclosingCircle(c)
+                            center_skin = (int(x2),int(y2))
+                            radius_skin = int(radius_skin)
+                            #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                            cv2.circle(Hsv_image,center_skin,radius_skin,hsv_skin_upper,1)
+
+                            self.scarlet_flag = True
+                        else:
+                            self.scarlet_flag = False
+                else:
+                    self.red_flag = False
+        bitwiseOr = cv2.bitwise_or(mask_for_red,mask_for_skin)
+        bitwiseAnd = cv2.bitwise_and(cv_image,cv_image,mask = bitwiseOr)
+        cv2.imshow('red', bitwiseAnd)
+        cv2.waitKey(3)
+
+class image_converter():
+
+    def __init__(self):
+        self.bridge = CvBridge()
+        self.image_sub = rospy.Subscriber("camera/rgb/image_raw",Image,self.callback)
+
+    def callback(self,data):
+        try:
+            cv2_img = self.bridge.imgmsg_to_cv2(data,"bgr8")
+        except CvBridgeError, e:
+            print(e)
+        else:
+            cv2.imwrite("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.png", cv2_img)
 if __name__ == '__main__':
     try:
         rospy.init_node('nav_test', anonymous=True) #navigation
         navigator = GoToPose()
         cI = colourIdentifier()
 
-        x = points['room2_entrance_xy'][0] # set the coordinate of room 2
-        y = points['room2_entrance_xy'][1]
+        x = points['room1_entrance_xy'][0] # set the coordinate of room 2
+        y = points['room1_entrance_xy'][1]
         theta = 0
         position = {'x': x, 'y' : y}
         quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -166,8 +244,8 @@ if __name__ == '__main__':
                         break
 
         if cI.green_flag == True: # if the turtlebot find the green circle at the entrance of room 2
-            x = points['room2_centre_xy'][0]# SPECIFY X COORDINATE HERE
-            y = points['room2_centre_xy'][1]# SPECIFY Y COORDINATE HERE
+            x = points['room1_centre_xy'][0]# SPECIFY X COORDINATE HERE it is supposed to be 2
+            y = points['room1_centre_xy'][1]# SPECIFY Y COORDINATE HERE
             theta = 0# SPECIFY THETA (ROTATION) HERE
             position = {'x': x, 'y' : y}
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -226,6 +304,17 @@ if __name__ == '__main__':
 
                 rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
                 navigator.goto(position, quaternion)
+        cluedo = cluedoIdentifier()
+        for i in range(1,10):
+            theta = 0.5 * i
+            quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+            navigator.goto(position, quaternion)
+            if cluedo.scarlet_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Scarlet")
+                f.close()
+                break
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Ctrl-C caught. Quitting")
