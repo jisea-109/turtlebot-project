@@ -8,7 +8,7 @@ from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
 import yaml
-path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world1/input_points.yaml'
+path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world2/input_points.yaml'
 with open(path,"r") as stream:
     points = yaml.safe_load(stream)
 #-------------------------------------------------------------------------------moving bot
@@ -158,19 +158,19 @@ class cluedoIdentifier():
             pass
         hsv_red_lower = np.array([0,100,20])
         hsv_red_upper = np.array([10,255,255])
-        hsv_skin_lower = np.array([0,50,60])
-        hsv_skin_upper = np.array([10,150,255])
+        hsv_skin_lower = np.array([0,50,48])
+        hsv_skin_upper = np.array([12,150,255])
         Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper)
         mask_for_skin = cv2.inRange(Hsv_image, hsv_skin_lower, hsv_skin_upper)
         # Apply the mask to the original image using the cv2.bitwise_and() method
         red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
 
-        contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours_red) > 0:
-            c = max(contours_red, key=cv2.contourArea)
+        self.contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(self.contours_red) > 0 and len(self.contours_red) < 30:
+            c = max(self.contours_red, key=cv2.contourArea)
 
-            if cv2.contourArea(c) > 50: # range
+            if cv2.contourArea(c) > 10: # range
                 (x, y), radius = cv2.minEnclosingCircle(c)
                 center = (int(x),int(y))
                 radius = int(radius)
@@ -180,11 +180,10 @@ class cluedoIdentifier():
                 self.red_flag = True
                 if self.red_flag == True:
                     skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
-                    contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-                    if len(contours_skin) > 0:
-                        c = max(contours_skin, key=cv2.contourArea)
-
-                        if cv2.contourArea(c) > 20: # range
+                    self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 25:
+                        c = max(self.contours_skin, key=cv2.contourArea)
+                        if cv2.contourArea(c) > 10: # range
                             (x2, y2), radius_skin = cv2.minEnclosingCircle(c)
                             center_skin = (int(x2),int(y2))
                             radius_skin = int(radius_skin)
@@ -220,8 +219,8 @@ if __name__ == '__main__':
         navigator = GoToPose()
         cI = colourIdentifier()
 
-        x = points['room1_entrance_xy'][0] # set the coordinate of room 2
-        y = points['room1_entrance_xy'][1]
+        x = points['room2_entrance_xy'][0] # 22222
+        y = points['room2_entrance_xy'][1]
         theta = 0
         position = {'x': x, 'y' : y}
         quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -244,8 +243,8 @@ if __name__ == '__main__':
                         break
 
         if cI.green_flag == True: # if the turtlebot find the green circle at the entrance of room 2
-            x = points['room1_centre_xy'][0]# SPECIFY X COORDINATE HERE it is supposed to be 2
-            y = points['room1_centre_xy'][1]# SPECIFY Y COORDINATE HERE
+            x = points['room2_centre_xy'][0]# SPECIFY X COORDINATE HERE 222222
+            y = points['room2_centre_xy'][1]# SPECIFY Y COORDINATE HERE
             theta = 0# SPECIFY THETA (ROTATION) HERE
             position = {'x': x, 'y' : y}
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -305,10 +304,46 @@ if __name__ == '__main__':
                 rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
                 navigator.goto(position, quaternion)
         cluedo = cluedoIdentifier()
-        for i in range(1,10):
+        stop_flag = 0
+        for i in range(1,15):
             theta = 0.5 * i
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
             navigator.goto(position, quaternion)
+            if cluedo.scarlet_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Scarlet")
+                f.close()
+                stop_flag = 1
+                break
+        for i in range(6,28):
+            if stop_flag == 1:
+                break
+            if (i < 11 and i >= 6):
+                theta = 0.4 * i - 0.3
+                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                temp_x = x-1
+                position = {'x': temp_x, 'y' : y}
+                navigator.goto(position, quaternion)
+            if (i < 16 and i >= 11):
+                theta = 0.4 * i - 0.6
+                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                temp_y = y - 1
+                position = {'x': x, 'y' : temp_y}
+                navigator.goto(position, quaternion)
+            if (i < 21 and i >= 16):
+                theta = 0.4 * i - 1.3
+                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                temp_x = x + 1
+                position = {'x': temp_x, 'y' : y}
+                navigator.goto(position, quaternion)
+            if (i <= 28 and i >= 21):
+                theta = 0.4 * i - 2.0
+                quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
+                temp_y = y + 2
+                temp_x = x + 1
+                position = {'x': temp_x, 'y' : temp_y}
+                navigator.goto(position, quaternion)
             if cluedo.scarlet_flag == True:
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
