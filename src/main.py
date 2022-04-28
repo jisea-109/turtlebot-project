@@ -8,7 +8,7 @@ from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
 import yaml
-path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world2/input_points.yaml'
+path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world1/input_points.yaml'
 with open(path,"r") as stream:
     points = yaml.safe_load(stream)
 #-------------------------------------------------------------------------------moving bot
@@ -99,11 +99,6 @@ class colourIdentifier():
         contours_green, hierarchy_green = cv2.findContours(mask_for_green,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
         if len(contours_green) > 0:
             c = max(contours_green, key=cv2.contourArea)
-            # M = cv2.moments(c)
-            # try:
-            #     cx, cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
-            # except ZeroDivisionError:
-            #     pass
 
             if cv2.contourArea(c) > 2000: # range
                 (x, y), radius = cv2.minEnclosingCircle(c)
@@ -142,44 +137,171 @@ class cluedoIdentifier():
 
         # Initialise any flags that signal a colour has been detected (default to false)
         self.red_flag = False
-        self.scarlet_flag = True
+        self.blue_flag = False
+        self.purple_flag = False
+        self.yellow_flag = False
+        self.scarlet_flag = False
+        self.peacock_flag = False
+        self.plum_flag = False
+        self.mustard_flag = False
         # Remember to initialise a CvBridge() and set up a subscriber to the image topic you wish to use
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.callback)
-        # We covered which topic to subscribe to should you wish to receive image data
 
 
     def callback(self, data):
         # Convert the received image into a opencv image
-        # But remember that you should always wrap a call to this conversion method in an exception handler
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError:
             pass
-        hsv_red_lower = np.array([0,100,20])
-        hsv_red_upper = np.array([10,255,255])
-        hsv_skin_lower = np.array([0,50,48])
-        hsv_skin_upper = np.array([12,150,255])
-        Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-        mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper)
-        mask_for_skin = cv2.inRange(Hsv_image, hsv_skin_lower, hsv_skin_upper)
-        # Apply the mask to the original image using the cv2.bitwise_and() method
-        red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
 
-        self.contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-        if len(self.contours_red) > 0 and len(self.contours_red) < 30:
+        Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+
+        hsv_red_lower = np.array([0,100,20])  # scarlet background hsv value
+        hsv_red_upper = np.array([10,255,255])
+
+        hsv_blue_lower = np.array([100,50,50]) # peacock background hsv value
+        hsv_blue_upper = np.array([140,255,255])
+
+        hsv_purple_lower = np.array([100,35,10]) # palm background hsv value
+        hsv_purple_upper = np.array([180,255,255])
+
+        hsv_yellow_lower = np.array([20,100,50]) # mustard background hsv value
+        hsv_yellow_upper = np.array([30,255,255])
+
+        hsv_skin_lower = np.array([0,30,50]) # skin hsv value
+        hsv_skin_upper = np.array([20,150,255])
+
+
+        hsv_scarlet_skin_lower = np.array([0,50,48]) # scarlet skin hsv value
+        hsv_scarlet_skin_upper = np.array([12,150,255])
+
+        mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper) #filter out except red
+        mask_for_blue = cv2.inRange(Hsv_image, hsv_blue_lower, hsv_blue_upper) #filter out except blue
+        mask_for_purple = cv2.inRange(Hsv_image, hsv_purple_lower, hsv_purple_upper) #filter out except purple
+        mask_for_yellow = cv2.inRange(Hsv_image, hsv_yellow_lower,hsv_yellow_upper) #filter out except yellow
+        mask_for_skin = cv2.inRange(Hsv_image, hsv_skin_lower, hsv_skin_upper) #filter out except skin
+
+        mask_for_scarlet_skin = cv2.inRange(Hsv_image, hsv_scarlet_skin_lower, hsv_scarlet_skin_upper) #filter out except scarlet skin
+        # Apply the mask to the original image using the cv2.bitwise_and() method
+        # red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
+        # blue_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_blue)
+        # purple_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_purple)
+
+        self.contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE) # find the red contours
+        if len(self.contours_red) > 0 and len(self.contours_red) < 30: # if the turtlebot finds the red but it is too big like construction barrels then skip
             c = max(self.contours_red, key=cv2.contourArea)
 
-            if cv2.contourArea(c) > 10: # range
+            if cv2.contourArea(c) > 10: # make sure the range is not too far
                 (x, y), radius = cv2.minEnclosingCircle(c)
                 center = (int(x),int(y))
                 radius = int(radius)
                 #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
                 cv2.circle(Hsv_image,center,radius,hsv_red_upper,1)
 
-                self.red_flag = True
-                if self.red_flag == True:
-                    skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
+                self.red_flag = True # The sign that the turtle bot finds red color
+
+                if self.red_flag == True: # if the turtle bot finds the object with red color
+                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_scarlet_skin)
+                    self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_scarlet_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+
+                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 25 # if the turtle bot finds the object with red color and skin color
+                        c = max(self.contours_skin, key=cv2.contourArea)
+
+                        if cv2.contourArea(c) > 10: # the turtle bot thinks it is scarlet
+                            (x2, y2), radius_skin = cv2.minEnclosingCircle(c)
+                            center_skin = (int(x2),int(y2))
+                            radius_skin = int(radius_skin)
+                            #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                            cv2.circle(Hsv_image,center_skin,radius_skin,hsv_scarlet_skin_upper,1)
+
+                            self.scarlet_flag = True
+                    else:
+                        self.scarlet_flag = False
+        else: # turn off the flags if there is no object with red color and skin color
+            self.red_flag = False
+            self.scarlet_flag = False
+
+        self.contours_blue, hierarchy_blue = cv2.findContours(mask_for_blue,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(self.contours_blue) > 0 and len(self.contours_blue) < 30:
+            c = max(self.contours_blue, key=cv2.contourArea)
+
+            if cv2.contourArea(c) > 10: # range
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                center = (int(x),int(y))
+                radius = int(radius)
+                #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                cv2.circle(Hsv_image,center,radius,hsv_blue_upper,1)
+
+                self.blue_flag = True
+
+                if self.blue_flag == True:
+                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
+                    self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 30:
+                        c = max(self.contours_skin, key=cv2.contourArea)
+                        if cv2.contourArea(c) > 10: # range
+                            (x2, y2), radius_skin = cv2.minEnclosingCircle(c)
+                            center_skin = (int(x2),int(y2))
+                            radius_skin = int(radius_skin)
+                            #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                            cv2.circle(Hsv_image,center_skin,radius_skin,hsv_skin_upper,1)
+
+                            self.peacock_flag = True
+                    else:
+                        self.peacock_flag = False
+        else:
+            self.blue_flag = False
+            self.peacock_flag = False
+
+        self.contours_purple, hierarchy_purple = cv2.findContours(mask_for_purple,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(self.contours_purple) > 0 and len(self.contours_purple) < 30:
+            c = max(self.contours_purple, key=cv2.contourArea)
+
+            if cv2.contourArea(c) > 10: # range
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                center = (int(x),int(y))
+                radius = int(radius)
+                #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                cv2.circle(Hsv_image,center,radius,hsv_purple_upper,1)
+
+                self.purple_flag = True
+
+                if self.purple_flag == True:
+                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
+                    self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 30:
+                        c = max(self.contours_skin, key=cv2.contourArea)
+                        if cv2.contourArea(c) > 10: # range
+                            (x2, y2), radius_skin = cv2.minEnclosingCircle(c)
+                            center_skin = (int(x2),int(y2))
+                            radius_skin = int(radius_skin)
+                            #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                            cv2.circle(Hsv_image,center_skin,radius_skin,hsv_skin_upper,1)
+
+                            self.plum_flag = True
+                    else:
+                        self.plum_flag = False
+        else:
+            self.purple_flag = False
+            self.plum_flag = False
+
+        self.contours_yellow, hierarchy_yellow = cv2.findContours(mask_for_yellow,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+        if len(self.contours_yellow) > 0 and len(self.contours_yellow) < 30:
+            c = max(self.contours_yellow, key=cv2.contourArea)
+
+            if cv2.contourArea(c) > 10: # range
+                (x, y), radius = cv2.minEnclosingCircle(c)
+                center = (int(x),int(y))
+                radius = int(radius)
+                #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
+                cv2.circle(Hsv_image,center,radius,hsv_yellow_upper,1)
+
+                self.yellow_flag = True
+
+                if self.yellow_flag == True:
+                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
                     self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
                     if len(self.contours_skin) > 0 and len(self.contours_skin) < 25:
                         c = max(self.contours_skin, key=cv2.contourArea)
@@ -190,14 +312,15 @@ class cluedoIdentifier():
                             #cv2.circle(<image>,(<center x>,<center y>),<radius>,<colour (rgb tuple)>,<thickness (defaults to 1)>)
                             cv2.circle(Hsv_image,center_skin,radius_skin,hsv_skin_upper,1)
 
-                            self.scarlet_flag = True
-                        else:
-                            self.scarlet_flag = False
-                else:
-                    self.red_flag = False
-        bitwiseOr = cv2.bitwise_or(mask_for_red,mask_for_skin)
-        bitwiseAnd = cv2.bitwise_and(cv_image,cv_image,mask = bitwiseOr)
-        cv2.imshow('red', bitwiseAnd)
+                            self.mustard_flag = True
+                    else:
+                        self.mustard_flag = False
+        else:
+            self.yellow_flag = False
+            self.mustard_flag = False
+        # bitwiseOr = cv2.bitwise_or(mask_for_yellow,mask_for_skin)
+        # bitwiseAnd = cv2.bitwise_and(cv_image,cv_image,mask = bitwiseOr)
+        # cv2.imshow('red', bitwiseAnd)
         cv2.waitKey(3)
 
 class image_converter():
@@ -219,8 +342,8 @@ if __name__ == '__main__':
         navigator = GoToPose()
         cI = colourIdentifier()
 
-        x = points['room2_entrance_xy'][0] # 22222
-        y = points['room2_entrance_xy'][1]
+        x = points['room1_entrance_xy'][0] # 22222
+        y = points['room1_entrance_xy'][1]
         theta = 0
         position = {'x': x, 'y' : y}
         quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -243,8 +366,8 @@ if __name__ == '__main__':
                         break
 
         if cI.green_flag == True: # if the turtlebot find the green circle at the entrance of room 2
-            x = points['room2_centre_xy'][0]# SPECIFY X COORDINATE HERE 222222
-            y = points['room2_centre_xy'][1]# SPECIFY Y COORDINATE HERE
+            x = points['room1_centre_xy'][0]# SPECIFY X COORDINATE HERE 222222
+            y = points['room1_centre_xy'][1]# SPECIFY Y COORDINATE HERE
             theta = 0# SPECIFY THETA (ROTATION) HERE
             position = {'x': x, 'y' : y}
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -316,6 +439,28 @@ if __name__ == '__main__':
                 f.close()
                 stop_flag = 1
                 break
+            if cluedo.peacock_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Peacock")
+                f.close()
+                stop_flag = 1
+                break
+            if cluedo.plum_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Plum")
+                f.close()
+                stop_flag = 1
+                break
+            if cluedo.mustard_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Mustard")
+                f.close()
+                stop_flag = 1
+                break
+
         for i in range(6,28):
             if stop_flag == 1:
                 break
@@ -349,6 +494,27 @@ if __name__ == '__main__':
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Scarlet")
                 f.close()
+                break
+            if cluedo.peacock_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Peacock")
+                f.close()
+                stop_flag = 1
+                break
+            if cluedo.plum_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Plum")
+                f.close()
+                stop_flag = 1
+                break
+            if cluedo.mustard_flag == True:
+                im = image_converter()
+                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f.write("Mustard")
+                f.close()
+                stop_flag = 1
                 break
 
     except rospy.ROSInterruptException:
