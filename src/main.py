@@ -73,15 +73,13 @@ class colourIdentifier():
         # Initialise any flags that signal a colour has been detected (default to false)
         self.green_flag = False
         self.red_flag = False
-        # Remember to initialise a CvBridge() and set up a subscriber to the image topic you wish to use
+
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.callback)
-        # We covered which topic to subscribe to should you wish to receive image data
+
 
 
     def callback(self, data):
-        # Convert the received image into a opencv image
-        # But remember that you should always wrap a call to this conversion method in an exception handler
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError:
@@ -91,7 +89,7 @@ class colourIdentifier():
         hsv_green_upper = np.array([80, 255, 255])
         # Convert the rgb image into a hsv image
         Hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-        # Filter out everything but a particular colour using the cv2.inRange() method
+
         mask_for_green = cv2.inRange(Hsv_image, hsv_green_lower, hsv_green_upper)
         # Apply the mask to the original image using the cv2.bitwise_and() method
         green_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_green)
@@ -112,10 +110,12 @@ class colourIdentifier():
         else:
             self.green_flag = False
 
+        # Set the upper and lower bounds of red color (rgb value to hsv)
         hsv_red_lower = np.array([0,100,20])
         hsv_red_upper = np.array([0,255,255])
+        #filter out except red
         mask_for_red = cv2.inRange(Hsv_image, hsv_red_lower, hsv_red_upper)
-        red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
+
         contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
         if len(contours_red) > 0:
             c = max(contours_red, key=cv2.contourArea)
@@ -127,8 +127,7 @@ class colourIdentifier():
                 self.red_flag = True
         else:
             self.red_flag = False
-        # cv2.imshow('green', green_identifier)
-        # cv2.imshow('red', red_identifier)
+
         cv2.waitKey(3)
 
 class cluedoIdentifier():
@@ -184,10 +183,6 @@ class cluedoIdentifier():
         mask_for_skin = cv2.inRange(Hsv_image, hsv_skin_lower, hsv_skin_upper) #filter out except skin
 
         mask_for_scarlet_skin = cv2.inRange(Hsv_image, hsv_scarlet_skin_lower, hsv_scarlet_skin_upper) #filter out except scarlet skin
-        # Apply the mask to the original image using the cv2.bitwise_and() method
-        # red_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_red)
-        # blue_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_blue)
-        # purple_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_purple)
 
         self.contours_red, hierarchy_red = cv2.findContours(mask_for_red,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE) # find the red contours
         if len(self.contours_red) > 0 and len(self.contours_red) < 30: # if the turtlebot finds the red but it is too big like construction barrels then skip
@@ -206,7 +201,7 @@ class cluedoIdentifier():
                     # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_scarlet_skin)
                     self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_scarlet_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
-                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 25 # if the turtle bot finds the object with red color and skin color
+                    if len(self.contours_skin) > 0 and len(self.contours_skin) < 25: # if the turtle bot finds the object with red color and skin color
                         c = max(self.contours_skin, key=cv2.contourArea)
 
                         if cv2.contourArea(c) > 10: # the turtle bot thinks it is scarlet
@@ -227,7 +222,7 @@ class cluedoIdentifier():
         if len(self.contours_blue) > 0 and len(self.contours_blue) < 30:
             c = max(self.contours_blue, key=cv2.contourArea)
 
-            if cv2.contourArea(c) > 10: # range
+            if cv2.contourArea(c) > 10:
                 (x, y), radius = cv2.minEnclosingCircle(c)
                 center = (int(x),int(y))
                 radius = int(radius)
@@ -237,7 +232,6 @@ class cluedoIdentifier():
                 self.blue_flag = True
 
                 if self.blue_flag == True:
-                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
                     self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
                     if len(self.contours_skin) > 0 and len(self.contours_skin) < 30:
                         c = max(self.contours_skin, key=cv2.contourArea)
@@ -255,6 +249,7 @@ class cluedoIdentifier():
             self.blue_flag = False
             self.peacock_flag = False
 
+        # Now the codes are bascially the same but the mask and hsv value are different
         self.contours_purple, hierarchy_purple = cv2.findContours(mask_for_purple,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
         if len(self.contours_purple) > 0 and len(self.contours_purple) < 30:
             c = max(self.contours_purple, key=cv2.contourArea)
@@ -269,7 +264,7 @@ class cluedoIdentifier():
                 self.purple_flag = True
 
                 if self.purple_flag == True:
-                    # skin_identifier = cv2.bitwise_and(cv_image,cv_image,mask = mask_for_skin)
+
                     self.contours_skin, hierarchy_skin = cv2.findContours(mask_for_skin,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
                     if len(self.contours_skin) > 0 and len(self.contours_skin) < 30:
                         c = max(self.contours_skin, key=cv2.contourArea)
@@ -323,7 +318,7 @@ class cluedoIdentifier():
         # cv2.imshow('red', bitwiseAnd)
         cv2.waitKey(3)
 
-class image_converter():
+class image_converter(): # save a screenshot and text file that contains the cluedo's name
 
     def __init__(self):
         self.bridge = CvBridge()
@@ -342,8 +337,8 @@ if __name__ == '__main__':
         navigator = GoToPose()
         cI = colourIdentifier()
 
-        x = points['room1_entrance_xy'][0] # 22222
-        y = points['room1_entrance_xy'][1]
+        x = points['room2_entrance_xy'][0]
+        y = points['room2_entrance_xy'][1]
         theta = 0
         position = {'x': x, 'y' : y}
         quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -366,8 +361,8 @@ if __name__ == '__main__':
                         break
 
         if cI.green_flag == True: # if the turtlebot find the green circle at the entrance of room 2
-            x = points['room1_centre_xy'][0]# SPECIFY X COORDINATE HERE 222222
-            y = points['room1_centre_xy'][1]# SPECIFY Y COORDINATE HERE
+            x = points['room2_centre_xy'][0]# SPECIFY X COORDINATE HERE
+            y = points['room2_centre_xy'][1]# SPECIFY Y COORDINATE HERE
             theta = 0# SPECIFY THETA (ROTATION) HERE
             position = {'x': x, 'y' : y}
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
@@ -432,28 +427,28 @@ if __name__ == '__main__':
             theta = 0.5 * i
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
             navigator.goto(position, quaternion)
-            if cluedo.scarlet_flag == True:
+            if cluedo.scarlet_flag == True: # if the turtle finds scarlet
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Scarlet")
                 f.close()
-                stop_flag = 1
+                stop_flag = 1 # to stop the action after finding cluedo (line 460)
                 break
-            if cluedo.peacock_flag == True:
+            if cluedo.peacock_flag == True: # if the turtle finds peacock
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Peacock")
                 f.close()
                 stop_flag = 1
                 break
-            if cluedo.plum_flag == True:
+            if cluedo.plum_flag == True: # if the turtle finds plum
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Plum")
                 f.close()
                 stop_flag = 1
                 break
-            if cluedo.mustard_flag == True:
+            if cluedo.mustard_flag == True: # if the turtle finds mustard
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Mustard")
@@ -462,7 +457,7 @@ if __name__ == '__main__':
                 break
 
         for i in range(6,28):
-            if stop_flag == 1:
+            if stop_flag == 1: # stop looking around as the cluedo is already found
                 break
             if (i < 11 and i >= 6):
                 theta = 0.4 * i - 0.3
@@ -495,7 +490,7 @@ if __name__ == '__main__':
                 f.write("Scarlet")
                 f.close()
                 break
-            if cluedo.peacock_flag == True:
+            if cluedo.peacock_flag == True: # save a screenshot
                 im = image_converter()
                 f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Peacock")
