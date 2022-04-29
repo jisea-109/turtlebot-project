@@ -8,7 +8,8 @@ from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
 import yaml
-path = '/home/csunix/sc19s2c/catkin_ws/src/group_project/mock_evaluation/worlds/world1/input_points.yaml'
+import os.path
+path = os.path.expanduser('~/catkin_ws/src/group_project/world/input_points.yaml')
 with open(path,"r") as stream:
     points = yaml.safe_load(stream)
 #-------------------------------------------------------------------------------moving bot
