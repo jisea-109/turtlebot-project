@@ -7,7 +7,6 @@ import actionlib
 from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
-import time
 import yaml
 import os.path
 path = os.path.expanduser('~/catkin_ws/src/group_project/world/input_points.yaml')
@@ -20,6 +19,8 @@ import sys
 from geometry_msgs.msg import Twist, Vector3
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+
+from kobuki_msgs.msg import BumperEvent
 class GoToPose():
     def __init__(self):
 
@@ -332,7 +333,20 @@ class image_converter(): # save a screenshot and text file that contains the clu
         except CvBridgeError, e:
             print(e)
         else:
-            cv2.imwrite("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.png", cv2_img)
+            output_path = os.path.expanduser("~/catkin_ws/src/group_project/output/cluedo_character.png")
+            cv2.imwrite(output_path, cv2_img)
+
+class detect_obstacle():
+
+    def __init__(self):
+        self.bump_sub = rospy.Subscriber('mobile_base/events/bumper', BumperEvent, callback)
+        self.flag = False
+    def callback(self,data):
+        if (data.state == BumperEvent.PRESSED):
+            self.flag = True
+        else:
+            self.flag = False
+
 if __name__ == '__main__':
     try:
         rospy.init_node('nav_test', anonymous=True) #navigation
@@ -426,34 +440,35 @@ if __name__ == '__main__':
                 navigator.goto(position, quaternion)
         cluedo = cluedoIdentifier()
         stop_flag = 0
+        output_path = os.path.expanduser('~/catkin_ws/src/group_project/output/cluedo_character.txt')
         for i in range(1,15):
             theta = 0.5 * i
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
             navigator.goto(position, quaternion)
             if cluedo.scarlet_flag == True: # if the turtle finds scarlet
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Scarlet")
                 f.close()
                 stop_flag = 1 # to stop the action after finding cluedo (line 460)
                 break
             if cluedo.peacock_flag == True: # if the turtle finds peacock
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Peacock")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.plum_flag == True: # if the turtle finds plum
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Plum")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.mustard_flag == True: # if the turtle finds mustard
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Mustard")
                 f.close()
                 stop_flag = 1
@@ -489,27 +504,27 @@ if __name__ == '__main__':
                 navigator.goto(position, quaternion)
             if cluedo.scarlet_flag == True:
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Scarlet")
                 f.close()
                 break
             if cluedo.peacock_flag == True: # save a screenshot
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Peacock")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.plum_flag == True:
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Plum")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.mustard_flag == True:
                 im = image_converter()
-                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open(output_path,"w")
                 f.write("Mustard")
                 f.close()
                 stop_flag = 1
