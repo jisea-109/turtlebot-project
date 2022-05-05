@@ -7,6 +7,7 @@ import actionlib
 from actionlib_msgs.msg import *
 from geometry_msgs.msg import Pose, Point, Quaternion
 
+import time
 import yaml
 import os.path
 path = os.path.expanduser('~/catkin_ws/src/group_project/world/input_points.yaml')
@@ -348,6 +349,7 @@ if __name__ == '__main__':
         navigator.goto(position, quaternion)
 
         rospy.sleep(1)
+
         if cI.green_flag == False: # look around to find the green circle
             if cI.red_flag == True:
                 pass
@@ -367,7 +369,6 @@ if __name__ == '__main__':
             theta = 0# SPECIFY THETA (ROTATION) HERE
             position = {'x': x, 'y' : y}
             quaternion = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
-
             rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
             navigator.goto(position, quaternion)
 
@@ -380,6 +381,7 @@ if __name__ == '__main__':
 
             rospy.loginfo("Go to (%s, %s) pose", position['x'], position['y'])
             navigator.goto(position, quaternion)
+
         else: # go to room 1 if the turtlebot does not find the green circle nearby
             x = points['room1_entrance_xy'][0]
             y = points['room1_entrance_xy'][1]
@@ -430,28 +432,28 @@ if __name__ == '__main__':
             navigator.goto(position, quaternion)
             if cluedo.scarlet_flag == True: # if the turtle finds scarlet
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Scarlet")
                 f.close()
                 stop_flag = 1 # to stop the action after finding cluedo (line 460)
                 break
             if cluedo.peacock_flag == True: # if the turtle finds peacock
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Peacock")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.plum_flag == True: # if the turtle finds plum
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Plum")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.mustard_flag == True: # if the turtle finds mustard
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Mustard")
                 f.close()
                 stop_flag = 1
@@ -487,31 +489,30 @@ if __name__ == '__main__':
                 navigator.goto(position, quaternion)
             if cluedo.scarlet_flag == True:
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Scarlet")
                 f.close()
                 break
             if cluedo.peacock_flag == True: # save a screenshot
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Peacock")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.plum_flag == True:
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Plum")
                 f.close()
                 stop_flag = 1
                 break
             if cluedo.mustard_flag == True:
                 im = image_converter()
-                f = open("/home/csunix/sc19s2c/catkin_ws/src/group_project/output/cluedo_character.txt","w")
+                f = open("~/catkin_ws/src/group_project/output/cluedo_character.txt","w")
                 f.write("Mustard")
                 f.close()
                 stop_flag = 1
                 break
-
     except rospy.ROSInterruptException:
         rospy.loginfo("Ctrl-C caught. Quitting")
